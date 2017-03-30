@@ -1,2 +1,1 @@
-# CEU_Data-Analysis
-Data Analysis Exercises for classes at CEU
+# Data Analysis exercises for classes at CEU
