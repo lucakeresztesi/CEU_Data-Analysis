@@ -140,6 +140,7 @@ ddply(property_df, .(dup_m_labels), summarize, freq = length(dup_m_labels),
       mean_new_flat = round(mean(new_flat), digits = 2))
 
 #Keep unique and maybe duplicated observations
+property_df <- data.table(property_df)
 property_df <- property_df[property_df$duplicate2 == 0]
 
 
@@ -163,6 +164,16 @@ for(i in c(13, 16, 20, 23, 3, 26, 25, 21, 22, 38, 40, 41, 4)) {
   print(round(summary_stat(property_df[,i]), digits = 3))
 }  
 
+# summary statistics with stargazer
+property_sum <- property_df[,c(
+  2, 4, 13, 14, 15, 20, 21, 22, 23, 25, 26, 27, 47)]
+stargazer(
+  property_sum,
+  header = FALSE, 
+  out = "summarystats.html",
+  type = 'latex',
+  title = "Descriptive Statistics for the numeric variables in the prediction")
+
 #find mean price per squared meter and number of observations by condition, heating, 
 #view, balcony, orientation and parking
 ddply(property_df, .(condition), summarize, freq = length(condition), mean_psqm = round(mean(psqm), digits = 3))
@@ -172,31 +183,61 @@ ddply(property_df, .(orientation), summarize, freq = length(view), mean_psqm = r
 ddply(property_df, .(parking), summarize, freq = length(view), mean_psqm = round(mean(psqm), digits = 3))
 ddply(property_df, .(balcony), summarize, freq = length(view), mean_psqm = round(mean(psqm), digits = 3))
 
-#save a graph of regression line of sqm on price per sqm, scatter plot and a vertical line at x=8
+for(i in 1:length(property_sum)){
+  print(ggplot(property_sum, aes_string(x = colnames(property_sum)[i])) +
+          geom_histogram(aes(fill = ..count..)) + 
+          ggtitle(colnames(property_sum)[i])+
+          scale_fill_distiller(palette = "Spectral"))}
+
+# save a graph of regression line of sqm on price per sqm, scatter plot
 png(filename="Graph_sc1.png", res = 200, width = 1200, height = 800)
-ggplot(data = property_df, aes(x = sqm, y = psqm)) + geom_vline(xintercept=8, colour = "red") +
-  geom_point(size = 1.5, colour = "grey42") +
-  geom_smooth(method = "lm", colour = "blue", se = FALSE)
+ggplot(data = property_df, aes(x = sqm, y = psqm)) + 
+  geom_point(size = 1.5, aes(col = psqm)) +
+  geom_smooth(method = "lm", colour = "darkgrey", se = FALSE) +
+  labs(
+    x = "Size in square meter",
+    y = "Price per square meter",
+    title ="Linear relationship of size and price per square meter of flats") +
+  scale_color_distiller("Price per square meter", palette = "Spectral") +
+  theme_bw()
 dev.off()
 
-#save a graph of regression line of log sqm on log price per sqm, scatter plot and a vertical line at x=8
+# save a graph of regression line of log sqm on log price per sqm, scatter plot
 png(filename="Graph_sc2.png", res = 200, width = 1200, height = 800)
 ggplot(data = property_df, aes(x = ln_sqm, y = ln_psqm)) +
-  geom_point(size = 1.5, colour = "grey42") +
-  geom_smooth(method = "lm", colour = "blue", se = FALSE)
+  geom_point(size = 1.5, aes(col = psqm)) +
+  geom_smooth(method = "lm", colour = "darkgrey", se = FALSE) +
+  labs(
+    x = "Log size in square meter",
+    y = "Log price per square meter",
+    title ="Linear relationship of log size and log price per square meter of flats") +
+  scale_color_distiller("Price per square meter", palette = "Spectral") +
+  theme_bw()
 dev.off()
 
-#save plot to file: LOESS log price per square meters on log square meters
+# save plot to file: LOESS log price per square meters on log square meters
 png(filename="Graph_lp1.png", res = 200, width = 1200, height = 800)
-ggplot(data = property_df, aes(x = ln_sqm, y = ln_psqm)) + geom_smooth(method = "loess")
+ggplot(data = property_df, aes(x = ln_sqm, y = ln_psqm)) + geom_smooth(method = "loess") +
+  labs(
+    x = "Log size in square meter",
+    y = "Log price per square meter",
+    title ="Non-linear relationship of log size and log price per square meter of flats") +
+  scale_color_distiller("Price per square meter", palette = "Spectral") +
+  theme_bw()
 dev.off()
 
-#save plot to file: LOESS level price per square meters on level square meters
+# save plot to file: LOESS level price per square meters on level square meters
 png(filename="Graph_lp2.png", res = 200, width = 1200, height = 800)
-ggplot(data = property_df, aes(x = sqm, y = psqm)) + geom_smooth(method = "loess")
+ggplot(data = property_df, aes(x = sqm, y = psqm)) + geom_smooth(method = "loess") +
+  labs(
+    x = "Size in square meter",
+    y = "Price per square meter",
+    title ="Non-linear relationship of size and price per square meter of flats") +
+  scale_color_distiller("Price per square meter", palette = "Spectral") +
+  theme_bw()
 dev.off()
 
-#save plot to file: LOESS log price per square meters on log square meters for apartmans below 180 sqm
+# save plot to file: LOESS log price per square meters on log square meters for apartmans below 180 sqm
 png(filename="Graph_lp3.png", res = 200, width = 1200, height = 800)
 ggplot(data = property_df[property_df$sqm < 180,], aes(x = ln_sqm, y = ln_psqm)) + geom_smooth(method = "loess")
 dev.off()
@@ -309,7 +350,7 @@ ddply(property_df, .(view), summarize, freq = length(view), mean_psqm = round(me
 
 #decoding view variable from factor into character to be able to recode into new categories
 #for missing obs. adding NA
-#decoding heating into a factor with levels given in the list
+#decoding view into a factor with levels given in the list
 property_df$view <- as.character(property_df$view)
 property_df$view[which(is.na(property_df$view))] <- "NA"
 property_df$view <- factor(property_df$view, levels = c("NA", "court view", "garden view", "panorama", "street view"))
@@ -406,7 +447,7 @@ summary(property_df$balcony_2)
 property_df$balcony_2[which(is.na(property_df$balcony_0))] <- "NA"
 property_df$balcony_2[property_df$balcony_0 == 0] <- "no balcony"
 property_df$balcony_2[property_df$balcony_0 > 0 & property_df$balcony_0 <= 20] <- "normal"
-property_df$balcony_2[property_df$balcony_0 > 1 & property_df$balcony_0 <= 60] <- "large"
+property_df$balcony_2[property_df$balcony_0 > 20 & property_df$balcony_0 <= 60] <- "large"
 property_df$balcony_2[property_df$balcony_0 > 60] <- "extra large"
 
 ddply(property_df, .(balcony_2), summarize, freq = length(balcony_2), mean_psqm = round(mean(psqm), digits = 3))
@@ -444,7 +485,7 @@ RMSE_Log <- function(pred, obs, na.rm = FALSE){
 }
 
 # REGRESSION MODEL 1
-# In-sample multiple regressions with no interactions
+# Multiple regressions with no interactions trained on the entire dataset
 reg_1 <- lm(data = property_df, psqm ~ sqm_sp2060 + sqm_sp60p + heating_broad + condition_broad +
               aircond_d + elevator + nrooms + nhalfrooms + hasbalcony + concrete_blockflat_d + floor2 + lift_d +
               new_flat + floor_sp05 + floor_sp6p)
@@ -518,7 +559,7 @@ reg_6_bic  <- round(BIC(reg_6), digits = 3)
 
 
 stargazer(
-  title = "Initial multiple regression models", 
+  title = "Multiple regression models trained on the entire dataset", 
   type = "html",
   column.labels = c("Reg 1", "Reg 2", "Reg 3", "Reg 4", "Reg 5", "Reg 6"),
   list(reg_models), digits = 2, 
@@ -730,7 +771,7 @@ stargazer(
 
 # REGRESSION MODEL 4: CROSS-VALIDATION
 # Out of sample multiple regressions with interactions and with cross-validation
-# Using reg_7, reg_9 and reg_10 (best performers, all levels)
+# Using reg_7, reg_9 and reg_10 (best performers, all in levels)
 
 # Setup 5-fold cross-validation
 set.seed(201703) 
@@ -899,7 +940,7 @@ models_rmse
 
 
 #################################
-# SECTION 5: RANDOM FOREST MODELS
+# Section 7: RANDOM FOREST MODELS
 #################################
 
 library(randomForest)
@@ -947,7 +988,7 @@ rf_8_rmse <- RMSE_Lev(
 set.seed(201712)
 rf_4 <- randomForest(psqm ~ ., 
                      data = training_d, 
-                     ntree = 100,
+                     ntree = 500,
                      mtry = 4,
                      importance = TRUE,
                      na.action = na.exclude)
@@ -965,7 +1006,7 @@ rf_4_rmse <- RMSE_Lev(
 set.seed(201711)
 rf_def <- randomForest(psqm ~ ., 
                      data = training_d, 
-                     ntree = 100,
+                     ntree = 500,
                      importance = TRUE,
                      na.action = na.exclude)
 pander(rf_def)
@@ -976,4 +1017,177 @@ rf_def_rmse <- RMSE_Lev(
   pred = predict(rf_def, test_d), 
   obs = test_d$psqm, 
   na.rm = TRUE)
+
+###########################################
+# SECTION 8: Visualizing fit and error rate
+###########################################
+
+# REG_9
+act <- property_df[property_df$train == 0, ]$psqm
+# act_mat <- matrix(act, nrow = length(act), ncol = 1)
+p_9 <- predict(reg_9, newdata = property_df[property_df$train == 0,])
+# p_9_mat <- matrix(p_9, nrow = length(p_9), ncol = 1)
+err_9 <- (p_9 - act)
+# err_9_mat <- matrix(err_9, nrow = length(err_9), ncol = 1)
+
+# fit_9 <- cbind(act_mat, p_9_mat, err_9_mat)
+fit_9 <- cbind(act, p_9, err_9)
+colnames(fit_9) <- c("actual", "prediction", "error")
+fit_9 <- data.table(fit_9)
+
+# Plotting actual and predicted values, coloured with the error
+png(filename="Graph_fit_9.png", res = 200, width = 1200, height = 800)
+ggplot(data = fit_9, aes(x = act, y = p_9)) + 
+  geom_point(size = 0.5, aes(col = err_9)) +
+  geom_abline(aes(slope = 1, intercept = 0), size = 0.5, col = "blue") + 
+  geom_smooth(method = "lm", size = 0.5, colour = "red", se = FALSE) + 
+  labs(
+    x = "Actual values of Price per square meter",
+    y = "Predicted values of Price per square meter",
+    title ="Out-of-sample model fit for Regression 9") +
+  scale_color_distiller("Error", palette = "Spectral") +
+  theme_bw()
+dev.off()
+
+# Plotting predictions and error
+png(filename="Graph_error_9.png", res = 200, width = 1200, height = 800)
+ggplot(data = fit_9, aes(x = p_9, y = err_9)) + 
+  geom_point(size = 0.5, aes(col = err_9)) +
+  geom_smooth(method = "loess", size = 0.5, colour = "darkgrey", se = TRUE) +
+  labs(
+    x = "Predicted values of Price per square meter",
+    y = "Error of prediction",
+    title ="Out-of-sample model error for Regression 9") +
+  scale_color_distiller("Error", palette = "Spectral") +
+  theme_bw()
+dev.off()
+
+
+# REG_7
+act <- property_df[property_df$train == 0, ]$psqm
+# act_mat <- matrix(act, nrow = length(act), ncol = 1)
+p_7 <- predict(reg_7, newdata = property_df[property_df$train == 0,])
+# p_7_mat <- matrix(p_7, nrow = length(p_7), ncol = 1)
+err_7 <- (p_7 - act)
+# err_7_mat <- matrix(err_7, nrow = length(err_7), ncol = 1)
+
+# fit_7 <- cbind(act_mat, p_7_mat, err_7_mat)
+fit_7 <- cbind(act, p_7, err_7)
+colnames(fit_7) <- c("actual", "prediction", "error")
+fit_7 <- data.table(fit_7)
+
+# Plotting actual and predicted values, coloured with the error
+png(filename="Graph_fit_7.png", res = 200, width = 1200, height = 800)
+ggplot(data = fit_7, aes(x = act, y = p_7)) + 
+  geom_point(size = 0.5, aes(col = err_7)) +
+  geom_abline(aes(slope = 1, intercept = 0), size = 0.5, col = "blue") + 
+  geom_smooth(method = "lm", size = 0.5, colour = "red", se = FALSE) +
+  labs(
+    x = "Actual values of Price per square meter",
+    y = "Predicted values of Price per square meter",
+    title ="Out-of-sample model fit for Regression 7") +
+  scale_color_distiller("Error", palette = "Spectral") +
+  theme_bw()
+dev.off()
+
+# Plotting predictions and error
+png(filename="Graph_error_7.png", res = 200, width = 1200, height = 800)
+ggplot(data = fit_7, aes(x = p_7, y = err_7)) + 
+  geom_point(size = 0.5, aes(col = err_7)) +
+  geom_smooth(method = "loess", size = 0.5, colour = "darkgrey", se = TRUE) +
+  labs(
+    x = "Predicted values of Price per square meter",
+    y = "Error of prediction",
+    title ="Out-of-sample model error for Regression 7") +
+  scale_color_distiller("Error", palette = "Spectral") +
+  theme_bw()
+dev.off()
+
+
+# REG_10
+act <- property_df[property_df$train == 0, ]$psqm
+# act_mat <- matrix(act, nrow = length(act), ncol = 1)
+p_10 <- predict(reg_10, newdata = property_df[property_df$train == 0,])
+# p_10_mat <- matrix(p_10, nrow = length(p_10), ncol = 1)
+err_10 <- (p_10 - act)
+# err_10_mat <- matrix(err_10, nrow = length(err_10), ncol = 1)
+
+# fit_10 <- cbind(act_mat, p_10_mat, err_10_mat)
+fit_10 <- cbind(act, p_10, err_10)
+colnames(fit_10) <- c("actual", "prediction", "error")
+fit_10 <- data.table(fit_10)
+
+# Plotting actual and predicted values, coloured with the error
+png(filename="Graph_fit_10.png", res = 200, width = 1200, height = 800)
+ggplot(data = fit_10, aes(x = log(act), y = p_10)) + 
+  geom_point(size = 0.5, aes(col = err_10)) +
+  geom_abline(aes(slope = 1, intercept = 0), size = 0.5, col = "blue") + 
+  geom_smooth(method = "lm", size = 0.5, colour = "red", se = FALSE) +
+  labs(
+    x = "Actual values of Price per square meter",
+    y = "Predicted values of Price per square meter",
+    title ="Out-of-sample model fit for Regression 10") +
+  scale_color_distiller("Error", palette = "Spectral") +
+  theme_bw()
+dev.off()
+
+# Plotting predictions and error
+png(filename="Graph_error_10.png", res = 200, width = 1200, height = 800)
+ggplot(data = fit_10, aes(x = p_10, y = err_10)) + 
+  geom_point(size = 0.5, aes(col = err_10)) +
+  geom_smooth(method = "loess", size = 0.5, colour = "darkgrey", se = TRUE) +
+  labs(
+    x = "Predicted values of Price per square meter",
+    y = "Error of prediction",
+    title ="Out-of-sample model error for Regression 10") +
+  scale_color_distiller("Error", palette = "Spectral") +
+  theme_bw()
+dev.off()
+
+
+# RF_8
+act_rf <- test_d$psqm
+# act_mat_rf <- matrix(act, nrow = length(act_rf), ncol = 1)
+p_rf_8 <- predict(rf_8, newdata = test_d)
+# p_rf_8_mat <- matrix(p_rf_8, nrow = length(p_rf_8), ncol = 1)
+err_rf_8 <- (p_rf_8 - act_rf)
+# err_rf_8_mat <- matrix(err_rf_8, nrow = length(err_rf_8), ncol = 1)
+
+# fit_9 <- cbind(act_mat, p_9_mat, err_9_mat)
+fit_rf_8 <- cbind(act_rf, p_rf_8, err_rf_8)
+colnames(fit_rf_8) <- c("actual", "prediction", "error")
+fit_rf_8 <- data.table(fit_rf_8)
+
+# Plotting actual and predicted values, coloured with the error
+png(filename ="Graph_fit_rf_8.png", res = 200, width = 1200, height = 800)
+ggplot(data = fit_rf_8, aes(x = act_rf, y = p_rf_8)) + 
+  geom_point(size = 0.5, aes(col = err_rf_8)) +
+  geom_abline(aes(slope = 1, intercept = 0), size = 0.5, col = "blue") + 
+  geom_smooth(method = "lm", size = 0.5, colour = "red", se = FALSE) +
+  labs(
+    x = "Actual values of Price per square meter",
+    y = "Predicted values of Price per square meter",
+    title ="Random Forest model fit for 8 predictors") +
+  scale_color_distiller("Error", palette = "Spectral") +
+  theme_bw()
+dev.off()
+
+# Plotting predictions and error
+png(filename ="Graph_error_rf_8.png", res = 200, width = 1200, height = 800)
+ggplot(data = fit_rf_8, aes(x = p_rf_8, y = err_rf_8)) + 
+  geom_point(size = 0.5, aes(col = err_rf_8)) +
+  geom_smooth(method = "loess", size = 0.5, colour = "darkgrey", se = TRUE) +
+  labs(
+    x = "Predicted values of Price per square meter",
+    y = "Error of prediction",
+    title ="Random Forest model error for 8 predictors") +
+  scale_color_distiller("Error", palette = "Spectral") +
+  theme_bw()
+dev.off()
+
+
+
+
+
+
 
